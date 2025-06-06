@@ -1,0 +1,341 @@
+:root {
+            --primary: #6C63FF;
+            --primary-light: #a29bfe;
+            --secondary: #FF6584;
+            --success: #00b894;
+            --info: #0984e3;
+            --warning: #fdcb6e;
+            --danger: #d63031;
+            --dark: #2d3436;
+            --light: #f5f6fa;
+            --gray: #dfe6e9;
+            --white: #ffffff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background-color: #f8f9fa;
+            color: var(--dark);
+            overflow-x: hidden;
+        }
+
+        .dashboard-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: rgba(89, 160, 89, 0.85);
+            color: white;
+            padding: 20px 0;
+            transition: all 0.3s ease;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+            box-shadow: 4px 0 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            padding: 0 20px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-header img {
+            width: 40px;
+            margin-right: 10px;
+        }
+
+        .sidebar-header h2 {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .menu {
+            padding: 20px 0;
+        }
+
+        .menu-item {
+            list-style: none;
+            margin-bottom: 5px;
+        }
+
+        .menu-item a {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            transition: all 0.3s;
+            font-size: 0.95rem;
+            border-left: 3px solid transparent;
+        }
+
+        .menu-item a:hover, .menu-item a.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border-left: 3px solid white;
+        }
+
+        .menu-item i {
+            font-size: 1.2rem;
+            margin-right: 12px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .menu-divider {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin: 15px 20px;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 30px;
+            transition: all 0.3s;
+        }
+
+        /* Top Navigation */
+        .top-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+        }
+
+        .page-title h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        /* Form Styles (for search/filter if added later) */
+        .form-container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+        }
+
+        .form-header {
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--gray);
+            padding-bottom: 15px;
+        }
+
+        .form-header h2 {
+            font-size: 1.5rem;
+            color: rgba(0, 0, 0, 0.85);
+            font-weight: 600;
+        }
+
+        .form-header p {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid var(--gray);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.1);
+        }
+
+        select.form-control {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%232d3436' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            background-size: 16px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-light);
+            transform: translateY(-2px);
+        }
+
+        .btn-block {
+            display: block;
+            width: 100%;
+        }
+
+        /* Table Styles */
+        .table-container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.05);
+            overflow-x: auto;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .table th, .table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--gray);
+            vertical-align: middle; /* Align content in the middle */
+        }
+
+        .table th {
+            background-color: rgba(112, 201, 112, 0.85); /* Greenish background for table headers */
+            color: white;
+            font-weight: 500;
+        }
+
+        .table tr:hover {
+            background-color: rgba(108, 99, 255, 0.05);
+        }
+
+        .table-striped tbody tr:nth-of-type(odd) {
+            background-color: var(--light);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-icon {
+            padding: 8px;
+            border-radius: 6px;
+            color: white;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .btn-icon i {
+            font-size: 1rem;
+        }
+
+        .btn-icon:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-icon.btn-primary {
+            background-color: var(--primary);
+        }
+
+        .btn-icon.btn-primary:hover {
+            background-color: var(--primary-light);
+        }
+
+        .btn-icon.btn-danger {
+            background-color: var(--danger);
+        }
+
+        .btn-icon.btn-danger:hover {
+            background-color: #c0392b;
+        }
+
+        .btn-icon.btn-success {
+            background-color: var(--success);
+        }
+
+        .btn-icon.btn-success:hover {
+            background-color: #00a884;
+        }
+
+        /* Specific style for the "Add Dog" button to remove underline */
+        .btn.btn-success {
+            text-decoration: none; /* This is the key change */
+        }
+
+        .search-form {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .search-form .form-group {
+            margin-bottom: 0;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .search-form .btn {
+            align-self: flex-end;
+            height: 46px; /* Match input height */
+        }
+
+        .no-records {
+            text-align: center;
+            padding: 30px;
+            color: #7f8c8d;
+            font-size: 1rem;
+        }
+
+        /* Image specific styles for adoption list */
+        .dog-image-thumbnail {
+            width: 80px; /* Smaller for table */
+            height: 80px; /* Smaller for table */
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid var(--gray);
+        }
+
+        .no-image {
+            color: #7f8c8d;
+            font-style: italic;
+            font-size: 0.85rem;
+            display: block;
+            text-align: center;
+            width: 80px; /* Match thumbnail width */
+        }
+        .table-container .no-records {
+            text-align: center; /* Centers the text horizontally */
+            vertical-align: middle; /* Centers the text vertically (if the cell has height) */
+            padding: 20px; /* Add some padding for better visual spacing */
+            color: #888; /* A lighter color to indicate it's a message */
+        }
