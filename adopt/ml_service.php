@@ -6,7 +6,10 @@ function getMatchPrediction($input_data) {
     // IMPORTANT: Replace with the actual URL where your Flask app is running
     // If Flask is running on the same machine, 'http://127.0.0.1:5000' is common.
     // Ensure the port (5000) matches what you configured in api.py
+    // Local
     $flask_api_url = 'http://127.0.0.1:5000/predict_match';
+    // Deployed
+    // $flask_api_url = 'https://pawhub-ml-1.onrender.com/predict_match';
 
     // Encode the input data to JSON format
     $json_input = json_encode($input_data);

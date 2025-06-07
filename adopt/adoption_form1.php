@@ -118,9 +118,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <label class="required-field">House Space</label>
                     <select name="house_space" required>
                         <option disabled selected>Select</option>
-                        <option value="small">Small House</option>
-                        <option value="medium">Medium House</option>
-                        <option value="large">Large House</option>
+                        <option value="Small">Small House</option>
+                        <option value="Medium">Medium House</option>
+                        <option value="Large">Large House</option>
                     </select>
                 </div>
 
@@ -128,8 +128,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <label class="required-field">Lifestyle</label>
                     <select name="lifestyle" required>
                         <option disabled selected>Select</option>
-                        <option value="active">Active</option>
-                        <option value="sedentary">Sedentary</option>
+                        <option value="Active">Active</option>
+                        <option value="Sedentary">Sedentary</option>
                     </select>
                 </div>
 
@@ -137,8 +137,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <label class="required-field">Family Composition</label>
                     <select name="family_composition" required>
                         <option disabled selected>Select</option>
-                        <option value="with kids">With kids</option>
-                        <option value="no Kids">No Kids</option>
+                        <option value="With_Kids">With kids</option>
+                        <option value="No_Kids">No Kids</option>
                     </select>
                 </div>
 
@@ -146,8 +146,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <label class="required-field">Pet Experience</label>
                     <select name="pet_experience" required>
                         <option disabled selected>Select</option>
-                        <option value="With Experience">With Experience</option>
-                        <option value="No Experience">No Experience</option>
+                        <option value="Yes">With Experience</option>
+                        <option value="No">No Experience</option>
                     </select>
                 </div>
 

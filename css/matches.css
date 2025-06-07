@@ -143,12 +143,11 @@
         /* --- Dog Cards --- */
         .card-grid {
             display: grid;
-            /* This creates responsive columns: 3 columns on large screens, 2 on medium, 1 on small */
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px; /* Adjust gap as needed */
-            padding: 20px; /* Padding around the grid items */
-            max-width: 1200px; /* Keep consistent with container max-width if desired */
-            margin: 0 auto; /* This centers the grid */
+            grid-template-columns: repeat(3, 350px); /* Always 3 columns of fixed width */
+            justify-content: start; /* Align items to the left if fewer than 3 */
+            gap: 30px;
+            padding: 20px;
+            overflow-x: auto; /* Optional: horizontal scroll if too wide for viewport */
         }
 
         .card {
