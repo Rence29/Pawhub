@@ -188,9 +188,6 @@ if (!$result) {
                                         <a href="adoption_delete.php?id=<?php echo $row['id']; ?>" class="btn-icon btn-danger" title="Delete" onclick="return confirm('Are you sure you want to delete this dog?');">
                                             <i class='bx bx-trash'></i>
                                         </a>
-                                        <a href="import_dog_register.php?dog_id=<?php echo $row['id']; ?>" class="btn-icon btn-success" title="Register">
-                                            <i class='bx bx-save'></i>
-                                        </a>
                                         </div>
                                     </td>
                                 </tr>

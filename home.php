@@ -153,7 +153,7 @@ $conn->close();
                     <h2 class="stat-value"><?= $adoptionRequests ?></h2>
                 </a>
 
-                <a href="User/user_list.php" class="stat-card danger animate__animated animate__fadeInUp animate__delay-3s">
+                <a href="user/user_list.php" class="stat-card danger animate__animated animate__fadeInUp animate__delay-3s">
                     <div class="stat-header">
                         <h3 class="stat-title">System Users</h3>
                         <div class="stat-icon danger">
@@ -205,12 +205,6 @@ $conn->close();
                                             <div class="action-buttons">
                                                 <a href="#" class="btn-icon btn-info view-dog" data-id="<?= $dog['id']; ?>" title="View">
                                                     <i class='bx bx-show'></i>
-                                                </a>
-                                                <a href="edit_dogh.php?id=<?= $dog['id']; ?>" class="btn-icon btn-primary" title="Edit">
-                                                    <i class='bx bx-edit'></i>
-                                                </a>
-                                                <a href="delete_dogh.php?id=<?= $dog['id']; ?>" class="btn-icon btn-danger" title="Delete" onclick="return confirm('Are you sure you want to delete this record?');">
-                                                    <i class='bx bx-trash'></i>
                                                 </a>
                                             </div>
                                         </td>

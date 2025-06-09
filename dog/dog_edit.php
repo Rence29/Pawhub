@@ -32,6 +32,7 @@ if (isset($_GET['id'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $dog_control_number = $_POST['dog_control_number'];
     $owner_name = $_POST['owner_name'];
     $dog_name = $_POST['dog_name'];
     $owner_occupation = $_POST['owner_occupation'];
@@ -48,14 +49,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $registration_date = $_POST['registration_date'];
 
     // Update the SQL query - owner_contact_number column removed
-    $update_sql = "UPDATE dogs SET owner_name = ?, dog_name = ?, owner_occupation = ?, owner_birthday = ?, dog_origin = ?, dog_breed = ?, dog_age = ?, dog_color = ?, dog_sex = ?, barangay = ?, vaccination_status = ?, deceased = ?, registration_date = ? WHERE id = ?";
+    $update_sql = "UPDATE dogs SET dog_control_number = ?, owner_name = ?, dog_name = ?, owner_occupation = ?, owner_birthday = ?, dog_origin = ?, dog_breed = ?, dog_age = ?, dog_color = ?, dog_sex = ?, barangay = ?, vaccination_status = ?, deceased = ?, registration_date = ? WHERE id = ?";
     $update_stmt = $conn->prepare($update_sql);
     // Check if prepare was successful
     if ($update_stmt === false) {
         die("Prepare failed: " . $conn->error);
     }
     // Updated bind_param string - 's' for owner_contact_number removed
-    $update_stmt->bind_param("sssssssssssssi", $owner_name, $dog_name, $owner_occupation, $owner_birthday, $dog_origin, $dog_breed, $dog_age, $dog_color, $dog_sex, $barangay, $vaccination_status, $deceased, $registration_date, $dog_id);
+    $update_stmt->bind_param("ssssssssssssssi",$dog_control_number, $owner_name, $dog_name, $owner_occupation, $owner_birthday, $dog_origin, $dog_breed, $dog_age, $dog_color, $dog_sex, $barangay, $vaccination_status, $deceased, $registration_date, $dog_id);
     
     if ($update_stmt->execute()) {
         header("Location: dog_list.php");
