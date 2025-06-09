@@ -1,93 +1,109 @@
 <?php
-// Database connection
-$conn = new mysqli('localhost', 'root', '', 'dog_found');
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
+// Include your database connection file that provides the $pdo object
+include 'db.php'; // This should connect using PDO as defined above
 
-if (isset($_GET['id']) && isset($_GET['status'])) {
-    $request_id = $_GET['id'];
-    $new_status = $_GET['status']; // 'Accepted' or 'Declined'
-
-    // Start a transaction to ensure data integrity
-    $conn->begin_transaction();
-
-    try {
-        // 1. Fetch the full request data directly from the denormalized adoption_requests table
-        $stmt_fetch = $conn->prepare("
-            SELECT ar.id AS request_id, ar.request_date,
-                   ar.adopter_name, ar.adopter_email, ar.adopter_phone, ar.adopter_address,
-                   ar.adopter_age, ar.house_space, ar.pet_experience, ar.family_composition,
-                   ar.dog_breed, ar.dog_age, ar.dog_size, ar.dog_sex, ar.dog_color, ar.dog_behavior, ar.dog_image
-            FROM adoption_requests ar
-            WHERE ar.id = ?
-        ");
-        $stmt_fetch->bind_param("i", $request_id);
-        $stmt_fetch->execute();
-        $result = $stmt_fetch->get_result();
-        $request_data = $result->fetch_assoc();
-        $stmt_fetch->close();
-
-        if ($request_data) {
-            // 2. Insert the data into adoption_history
-            $stmt_insert_history = $conn->prepare("
-                INSERT INTO adoption_history (
-                    adopter_name, adopter_email, adopter_phone, adopter_address,
-                    adopter_age, house_space, pet_experience, family_composition,
-                    dog_breed, dog_age, dog_size, dog_sex, dog_color, dog_behavior, dog_image,
-                    status, request_date, processed_date
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-            ");
-
-            // Bind parameters: 's' for string. Adjust types if any column is not string (e.g., 'i' for int).
-            $stmt_insert_history->bind_param(
-                "sssssssssssssssss", // 17 's' parameters for the 17 columns being inserted
-                $request_data['adopter_name'],
-                $request_data['adopter_email'],
-                $request_data['adopter_phone'],
-                $request_data['adopter_address'],
-                $request_data['adopter_age'],
-                $request_data['house_space'],
-                $request_data['pet_experience'],
-                $request_data['family_composition'],
-                $request_data['dog_breed'],
-                $request_data['dog_age'],
-                $request_data['dog_size'],
-                $request_data['dog_sex'],
-                $request_data['dog_color'],
-                $request_data['dog_behavior'],
-                $request_data['dog_image'],
-                $new_status, // 'Accepted' or 'Declined'
-                $request_data['request_date'] // Original request date
-            );
-            $stmt_insert_history->execute();
-            $stmt_insert_history->close();
-
-            // 3. Delete the record from adoption_requests
-            $stmt_delete = $conn->prepare("DELETE FROM adoption_requests WHERE id = ?");
-            $stmt_delete->bind_param("i", $request_id);
-            $stmt_delete->execute();
-            $stmt_delete->close();
-
-            // Commit the transaction if all operations were successful
-            $conn->commit();
-
-            // 4. Redirect to adoption_history.php
-            header("Location: adoption_history.php");
-            exit();
-
-        } else {
-            throw new Exception("Adoption request with ID " . $request_id . " not found for processing.");
-        }
-
-    } catch (Exception $e) {
-        // Rollback the transaction if any operation failed
-        $conn->rollback();
-        die("Error processing request: " . $e->getMessage());
+// Function to sanitize and validate integer IDs
+function validateId($id) {
+    $id = filter_var($id, FILTER_VALIDATE_INT);
+    if ($id === false || $id <= 0) {
+        return false;
     }
-} else {
-    die("Invalid request parameters. Missing ID or status.");
+    return $id;
 }
 
-$conn->close();
+// Check for required GET parameters
+$request_id = validateId($_GET['id'] ?? null);
+$status = $_GET['status'] ?? null; // Expected values: 'Accepted' or 'Declined'
+
+if ($request_id === false || !in_array($status, ['Accepted', 'Declined'])) {
+    // Log the error for debugging
+    error_log("Invalid request ID or status received in update_status.php. ID: " . ($_GET['id'] ?? 'N/A') . ", Status: " . ($status ?? 'N/A'));
+    die("Invalid request. Please go back and try again.");
+}
+
+try {
+    // Start a transaction for atomicity. If anything fails, everything is rolled back.
+    $pdo->beginTransaction();
+
+    // 1. Fetch the adoption request details from adoption_requests
+    $stmt_fetch_request = $pdo->prepare("SELECT * FROM adoption_requests WHERE id = ?");
+    $stmt_fetch_request->execute([$request_id]);
+    $request = $stmt_fetch_request->fetch(PDO::FETCH_ASSOC);
+
+    if (!$request) {
+        throw new Exception("Adoption request with ID {$request_id} not found.");
+    }
+
+    // 2. Insert the request details into the adoption_history table
+    // IMPORTANT: Ensure adoption_history table has a 'final_status' column (ENUM('Accepted', 'Declined'))
+    $stmt_insert_history = $pdo->prepare("
+        INSERT INTO adoption_history (
+            adopter_name, adopter_age, adopter_email, adopter_phone,
+            house_space, pet_experience, family_composition, adopter_address,
+            dog_breed, dog_age, dog_size, dog_sex, dog_color, dog_behavior, dog_image,
+            request_date, final_status, processed_date
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+    ");
+
+    $stmt_insert_history->execute([
+        $request['adopter_name'],
+        $request['adopter_age'],
+        $request['adopter_email'],
+        $request['adopter_phone'],
+        $request['house_space'],
+        $request['pet_experience'],
+        $request['family_composition'],
+        $request['adopter_address'],
+        $request['dog_breed'],
+        $request['dog_age'],
+        $request['dog_size'],
+        $request['dog_sex'],
+        $request['dog_color'],
+        $request['dog_behavior'],
+        $request['dog_image'],
+        $request['request_date'], // Use the original request_date from adoption_requests
+        $status // This will be 'Accepted' or 'Declined'
+    ]);
+
+    // 3. If the request is Declined, re-insert the dog back into adoption_list
+    if ($status === 'Declined') {
+        $stmt_return_dog = $pdo->prepare("
+            INSERT INTO adoption_list (
+                dog_image, dog_breed, dog_sex, dog_color, dog_age, dog_behavior, dog_size, health_condition, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'available')
+        ");
+        $stmt_return_dog->execute([
+            $request['dog_image'],
+            $request['dog_breed'],
+            $request['dog_sex'],
+            $request['dog_color'],
+            $request['dog_age'],
+            $request['dog_behavior'],
+            $request['dog_size'],
+            'Healthy' // Default health_condition for re-listed dogs (adjust if needed)
+        ]);
+    }
+
+    // 4. Delete the processed request from the adoption_requests table
+    $stmt_delete_request = $pdo->prepare("DELETE FROM adoption_requests WHERE id = ?");
+    $stmt_delete_request->execute([$request_id]);
+
+    // Commit the transaction if all operations were successful
+    $pdo->commit();
+
+    // Redirect back to the adoption history page after successful processing
+    header("Location: adoption_history.php"); // MODIFIED LINE
+    exit();
+
+} catch (PDOException $e) {
+    // Rollback the transaction on a PDO error
+    $pdo->rollBack();
+    error_log("PDO Error in update_status.php: " . $e->getMessage());
+    die("A database error occurred during the update. Please try again later.");
+} catch (Exception $e) {
+    // Rollback the transaction on any other general error
+    $pdo->rollBack();
+    error_log("General Error in update_status.php: " . $e->getMessage());
+    die("An unexpected error occurred. Please try again later.");
+}
 ?>

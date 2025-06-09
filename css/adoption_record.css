@@ -339,3 +339,23 @@
             padding: 20px; /* Add some padding for better visual spacing */
             color: #888; /* A lighter color to indicate it's a message */
         }
+         /* Add to adoption_record.css or a new style file */
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.85em;
+            white-space: nowrap; /* Prevent text wrapping */
+        }
+
+        .status-accepted {
+            background-color: #e6ffe6; /* Light green */
+            color: #008000; /* Dark green */
+            border: 1px solid #008000;
+        }
+
+        .status-declined {
+            background-color: #ffe6e6; /* Light red */
+            color: #cc0000; /* Dark red */
+            border: 1px solid #cc0000;
+        }

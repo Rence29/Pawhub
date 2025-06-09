@@ -1,43 +1,64 @@
 <?php
+$success_message = "";
+$error_message = "";
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $conn = new mysqli('localhost', 'root', '', 'dog_found');
 
     if ($conn->connect_error) {
-        die("Connection failed: " . $conn->connect_error);
-    }
-
-    $dog_control_number = $_POST['dog_control_number'];
-    $owner_name = $_POST['owner_name'];
-    $dog_name = $_POST['dog_name'];
-    $owner_occupation = $_POST['owner_occupation'];
-    $owner_birthday = $_POST['owner_birthday'];
-    $dog_origin = $_POST['dog_origin'];
-    $dog_breed = $_POST['dog_breed'];
-    $dog_color = $_POST['dog_color'];
-    $dog_age = $_POST['dog_age'];
-    $dog_sex = $_POST['dog_sex'];
-    $barangay = $_POST['barangay'];
-    $vaccination_status = $_POST['vaccination_status'];
-    $deceased = $_POST['deceased'];
-    $registration_date = $_POST['registration_date'];
-    // Removed: $owner_contact_number = $_POST['owner_contact_number'];
-
-    $sql = "INSERT INTO dogs (
-                dog_control_number, owner_name, dog_name, owner_occupation, owner_birthday, dog_origin,
-                dog_breed, dog_color, dog_age, dog_sex, barangay, vaccination_status, deceased, registration_date
-            ) VALUES (
-                '$dog_control_number', '$owner_name', '$dog_name', '$owner_occupation', '$owner_birthday', '$dog_origin',
-                '$dog_breed', '$dog_color', '$dog_age', '$dog_sex', '$barangay', '$vaccination_status', '$deceased', '$registration_date'
-            )";
-
-    if ($conn->query($sql) === TRUE) {
-        header("Location: dog_list.php");
-        exit();
+        // Log the error instead of dying directly in production for a better user experience
+        error_log("Connection failed: " . $conn->connect_error);
+        $error_message = "Database connection failed. Please try again later.";
     } else {
-        echo "Error: " . $sql . "<br>" . $conn->error;
-    }
+        // Sanitize and get POST variables
+        // Using htmlspecialchars to prevent XSS when displaying values,
+        // although prepared statements handle SQL injection.
+        $dog_control_number = htmlspecialchars($_POST['dog_control_number']);
+        $owner_name = htmlspecialchars($_POST['owner_name']);
+        $dog_name = htmlspecialchars($_POST['dog_name']);
+        $owner_occupation = htmlspecialchars($_POST['owner_occupation']);
+        $owner_birthday = htmlspecialchars($_POST['owner_birthday']);
+        $dog_origin = htmlspecialchars($_POST['dog_origin']);
+        $dog_breed = htmlspecialchars($_POST['dog_breed']);
+        $dog_color = htmlspecialchars($_POST['dog_color']);
+        $dog_age = htmlspecialchars($_POST['dog_age']);
+        $dog_sex = htmlspecialchars($_POST['dog_sex']);
+        $barangay = htmlspecialchars($_POST['barangay']);
+        $vaccination_status = htmlspecialchars($_POST['vaccination_status']);
+        $deceased = htmlspecialchars($_POST['deceased']);
+        $registration_date = htmlspecialchars($_POST['registration_date']);
 
-    $conn->close();
+        // SQL using prepared statements to prevent SQL Injection
+        $sql = "INSERT INTO dogs (
+                    dog_control_number, owner_name, dog_name, owner_occupation, owner_birthday, dog_origin,
+                    dog_breed, dog_color, dog_age, dog_sex, barangay, vaccination_status, deceased, registration_date
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+        $stmt = $conn->prepare($sql);
+
+        if ($stmt) {
+            $stmt->bind_param("ssssssssssssss",
+                $dog_control_number, $owner_name, $dog_name, $owner_occupation, $owner_birthday, $dog_origin,
+                $dog_breed, $dog_color, $dog_age, $dog_sex, $barangay, $vaccination_status, $deceased, $registration_date
+            );
+
+            if ($stmt->execute()) {
+                $success_message = "Dog Registered Successfully!";
+                // Optionally, clear form fields after successful submission here if needed
+                // For a modal, we might want to keep the data or reset based on UX design.
+                // For now, form will reset on full page reload (which happens after POST).
+            } else {
+                $error_message = "Error: " . $stmt->error;
+                error_log("SQL Error: " . $stmt->error);
+            }
+            $stmt->close();
+        } else {
+            $error_message = "Database prepare error: " . $conn->error;
+            error_log("Database prepare error: " . $conn->error);
+        }
+
+        $conn->close();
+    }
 }
 ?>
 
@@ -51,7 +72,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="../img/Pawhubicon.png">
     <link rel="stylesheet" href="../css/dog_register.css">
-
 </head>
 <body>
     <div class="dashboard-container">
@@ -92,11 +112,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         <span>Adopt Requests</span>
                     </a>
                 </li>
-                 <li class="menu-item active"> 
+                <li class="menu-item"> 
                     <a href="../adoption/adoption_history.php">
                         <i class='bx bx-archive'></i> 
                         <span>Adoption History</span>
                     </a>
+                </li>
 
                 <div class="menu-divider"></div>
 
@@ -132,7 +153,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <div class="form-grid">
                         <div>
                             <div class="form-group">
-                                <label for="dog_control_number">Dog Control Number *</label>
+                                <label for="dog_control_number">Dog Control Number</label>
                                 <input type="text" class="form-control" id="dog_control_number" name="dog_control_number" placeholder="00" required>
                             </div>
 
@@ -159,7 +180,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                         <div>
                             <div class="form-group">
-                                <label for="dog_origin">Dog Origin *</label>
+                                <label for="dog_origin">Dog Origin</label>
                                 <select class="form-control" id="dog_origin" name="dog_origin" required>
                                     <option value="" disabled selected>Select Origin</option>
                                     <option value="Local">Local</option>
@@ -183,7 +204,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             </div>
 
                             <div class="form-group">
-                                <label for="dog_sex">Dog Sex *</label>
+                                <label for="dog_sex">Dog Sex</label>
                                 <select class="form-control" id="dog_sex" name="dog_sex" required>
                                     <option value="" disabled selected>Select Sex</option>
                                     <option value="Male Castrated">Male Castrated</option>
@@ -233,7 +254,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             </div>
 
                             <div class="form-group">
-                                <label for="vaccination_status">Vaccination Status *</label>
+                                <label for="vaccination_status">Vaccination Status</label>
                                 <select class="form-control" id="vaccination_status" name="vaccination_status" required>
                                     <option value="" disabled selected>Select Status</option>
                                     <option value="Fully Vaccinated">Vaccinated</option>
@@ -242,16 +263,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             </div>
 
                             <div class="form-group">
-                                <label for="deceased">Deceased *</label>
-                                <select class="form-control" id="deceased" name="deceased" required>
-                                    <option value="" disabled selected>Select</option>
-                                    <option value="Yes">Yes</option>
-                                    <option value="No">No</option>
-                                </select>
+                                <label for="deceased">Deceased</label>
+                                <input type="text" class="form-control" id="deceased" name="deceased" value="No" readonly>
                             </div>
 
                             <div class="form-group">
-                                <label for="registration_date">Registration Date *</label>
+                                <label for="registration_date">Registration Date</label>
                                 <input type="date" class="form-control" id="registration_date" name="registration_date" required>
                             </div>
                         </div>
@@ -265,21 +282,88 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </main>
     </div>
 
+    <div id="statusModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <div class="modal-icon" id="modalIcon"></div>
+            <h3 id="modalTitle"></h3>
+            <p id="modalMessage"></p>
+        </div>
+    </div>
+
     <script>
-        // Add active class to current menu item
         document.addEventListener('DOMContentLoaded', function() {
+            // Set today's date as default for registration date
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('registration_date').value = today;
+
+            // Set default value for deceased field to "No" for new registrations
+            const deceasedInput = document.getElementById('deceased');
+            if (deceasedInput) { // Ensure the element exists
+                deceasedInput.value = 'No';
+            }
+
+            // Add active class to current menu item
             const currentPage = window.location.pathname.split('/').pop();
             const menuItems = document.querySelectorAll('.menu-item a');
 
             menuItems.forEach(item => {
-                if (item.getAttribute('href') === currentPage) {
-                    item.classList.add('active');
+                const linkHref = item.getAttribute('href');
+                const linkPage = linkHref.split('/').pop();
+                if (linkPage === currentPage) {
+                    // Remove 'active' from other items, if any
+                    document.querySelector('.menu-item.active')?.classList.remove('active');
+                    item.parentElement.classList.add('active'); // Add active class to the parent li
                 }
             });
 
-            // Set today's date as default for registration date
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('registration_date').value = today;
+            // Modal Logic
+            const statusModal = document.getElementById('statusModal');
+            const closeButton = document.querySelector('.modal .close-button');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalMessage = document.getElementById('modalMessage');
+            const modalIcon = document.getElementById('modalIcon');
+            const modalContent = document.querySelector('.modal-content');
+
+            // PHP variables to JS
+            const successMessage = "<?php echo $success_message; ?>";
+            const errorMessage = "<?php echo $error_message; ?>";
+
+            let shouldRedirect = false; // Flag to control redirection
+
+            if (successMessage) {
+                modalTitle.textContent = "Success!";
+                modalMessage.textContent = successMessage;
+                modalIcon.innerHTML = "<i class='bx bx-check-circle'></i>"; // Boxicons checkmark
+                modalContent.classList.add('success');
+                statusModal.classList.add('show');
+                shouldRedirect = true; // Set flag to true on success
+            } else if (errorMessage) {
+                modalTitle.textContent = "Error!";
+                modalMessage.textContent = errorMessage;
+                modalIcon.innerHTML = "<i class='bx bx-x-circle'></i>"; // Boxicons X mark
+                modalContent.classList.add('error');
+                statusModal.classList.add('show');
+                // No redirect on error, allow user to stay on page and correct input
+            }
+
+            // Function to handle modal close and potential redirection
+            function handleModalClose() {
+                statusModal.classList.remove('show');
+                if (shouldRedirect) {
+                    window.location.href = 'dog_list.php'; // Redirect to dog_list.php
+                }
+            }
+
+            // Close modal when clicking on the close button
+            closeButton.onclick = handleModalClose;
+
+            // Close modal when clicking anywhere outside of the modal content
+            window.onclick = function(event) {
+                if (event.target == statusModal) {
+                    handleModalClose();
+                }
+            }
         });
     </script>
 </body>

@@ -1,5 +1,5 @@
 <?php
-// Database connection
+// Database connection for display (using mysqli as in your original file for this part)
 $conn = new mysqli('localhost', 'root', '', 'dog_found');
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
@@ -12,7 +12,6 @@ if (isset($_GET['search'])) {
 }
 
 // Fetch all adoption requests directly from the denormalized adoption_requests table
-// No JOINs needed here, as all necessary data should now be in 'ar'
 $sql = "
     SELECT ar.*
     FROM adoption_requests ar
@@ -71,7 +70,7 @@ $result = $stmt->get_result();
                         <span>Adoption List</span>
                     </a>
                 </li>
-                <li class="menu-item">
+                <li class="menu-item active">
                     <a href="../adoption/adoption_record.php" class="active">
                         <i class='bx bx-history'></i>
                         <span>Adopt Requests</span>
@@ -135,7 +134,6 @@ $result = $stmt->get_result();
                             <th>Adopter Info</th>
                             <th>Dog Image</th>
                             <th>Dog Info</th>
-                            <th>Status</th>
                             <th>Requested At</th>
                             <th>Actions</th>
                         </tr>
@@ -145,8 +143,10 @@ $result = $stmt->get_result();
                             <?php while ($row = $result->fetch_assoc()): ?>
                             <tr>
                                 <td><b><?php echo htmlspecialchars($row['adopter_name']); ?></b></td>
-                                <td><b><?php echo htmlspecialchars($row['adopter_email']); ?>
-                                <?php echo htmlspecialchars($row['adopter_phone']);?></b></td>
+                                <td>
+                                    <b><?php echo htmlspecialchars($row['adopter_email']); ?></b><br>
+                                    <b><?php echo htmlspecialchars($row['adopter_phone']);?></b>
+                                </td>
                                 <td><?php echo htmlspecialchars($row['adopter_address']); ?></td>
                                 <td>
                                     Age: <?php echo htmlspecialchars($row['adopter_age']); ?><br>
@@ -167,29 +167,22 @@ $result = $stmt->get_result();
                                     Size: <?php echo htmlspecialchars($row['dog_size']); ?><br>
                                     Behavior: <?php echo htmlspecialchars($row['dog_behavior']); ?>
                                 </td>
-                                <td><?php echo htmlspecialchars($row['status']); ?></td>
                                 <td><?php echo htmlspecialchars($row['request_date']); ?></td>
                                 <td>
                                     <div class="action-buttons">
-                                        <?php if ($row['status'] == 'Pending'): ?>
-                                            <a href="update_status.php?id=<?php echo $row['id']; ?>&status=Accepted" class="btn-icon btn-success" title="Accept">
-                                                <i class='bx bx-check'></i>
-                                            </a>
-                                            <a href="update_status.php?id=<?php echo $row['id']; ?>&status=Declined" class="btn-icon btn-danger" title="Decline">
-                                                <i class='bx bx-x'></i>
-                                            </a>
-                                        <?php else: ?>
-                                            <a href="delete_request.php?id=<?php echo $row['id']; ?>" class="btn-icon btn-danger" title="Delete" onclick="return confirm('Are you sure you want to delete this request?');">
-                                                <i class='bx bx-trash'></i>
-                                            </a>
-                                        <?php endif; ?>
+                                        <a href="update_status.php?id=<?php echo $row['id']; ?>&status=Accepted" class="btn-icon btn-success" title="Accept">
+                                            <i class='bx bx-check'></i>
+                                        </a>
+                                        <a href="update_status.php?id=<?php echo $row['id']; ?>&status=Declined" class="btn-icon btn-danger" title="Decline">
+                                            <i class='bx bx-x'></i>
+                                        </a>
                                     </div>
                                 </td>
                             </tr>
                             <?php endwhile; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="10" class="no-records">No adoption requests found.</td>
+                                <td colspan="8" class="no-records">No pending adoption requests found.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>

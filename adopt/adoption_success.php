@@ -36,34 +36,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['finalize'])) {
 
     // Proceed only if both adopter and dog data are found
     if ($adopter && $dog) {
-        // --- CRITICAL FIXES HERE: Corrected column names and mapping ---
-        // Prepare the INSERT statement to save all relevant data into adoption_requests
-        // Ensure these column names EXACTLY match your 'adoption_requests' table schema.
-        $stmt = $pdo->prepare("INSERT INTO adoption_requests (
-            adopter_name,
-            adopter_age,
-            adopter_email,
-            adopter_phone,
-            house_space,        
-            pet_experience,     
-            family_composition, 
-            adopter_address,
-            dog_breed,
-            dog_age,
-            dog_size,
-            dog_sex,
-            dog_color,
-            dog_behavior,
-            dog_image
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-
         try {
+            // Start a transaction for atomicity
+            $pdo->beginTransaction();
+
+            // --- CRITICAL FIXES HERE: Corrected column names and mapping ---
+            // Prepare the INSERT statement to save all relevant data into adoption_requests
+            // Ensure these column names EXACTLY match your 'adoption_requests' table schema.
+            $stmt = $pdo->prepare("INSERT INTO adoption_requests (
+                adopter_name,
+                adopter_age,
+                adopter_email,
+                adopter_phone,
+                house_space,        
+                pet_experience,     
+                family_composition, 
+                adopter_address,
+                dog_breed,
+                dog_age,
+                dog_size,
+                dog_sex,
+                dog_color,
+                dog_behavior,
+                dog_image
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
             $stmt->execute([
                 $adopter['name'],
                 $adopter['age'],
                 $adopter['email'],
                 $adopter['contact_number'],
-                $adopter['house_space'],          
+                $adopter['house_space'],            
                 $adopter['pet_experience'],     
                 $adopter['family_composition'], 
                 $adopter['address'],
@@ -76,10 +79,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['finalize'])) {
                 $dog['dog_image']
             ]);
 
-            // Redirect to the home page after successful insertion
-            header("Location: ../index.php");
+            // Now, delete the adopted dog from the adoption_list table
+            $stmt_delete_dog = $pdo->prepare("DELETE FROM adoption_list WHERE id = ?");
+            $stmt_delete_dog->execute([$dog_id]);
+
+            // Commit the transaction
+            $pdo->commit();
+
+            // Redirect to the home page after successful insertion and deletion
+            header("Location: ../index.php"); // <--- THIS LINE IS CHANGED
             exit(); // Always call exit() after a header redirect
         } catch (PDOException $e) {
+            // Rollback the transaction on error
+            $pdo->rollBack();
             // Log the error for debugging (e.g., to a file, not to the user)
             error_log("PDO Error finalizing adoption: " . $e->getMessage());
             // Display a generic error to the user
@@ -177,14 +189,73 @@ $image_path = "../adoption/uploads/" . $image_filename;
         <div class="btn-group">
             <a href="matches.php?id=<?= htmlspecialchars($adopter_id) ?>" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back to Matches</a>
 
-            <form method="POST" style="display:inline;">
+            <form id="finalizeAdoptionForm" method="POST" style="display:inline;">
                 <input type="hidden" name="adopter_id" value="<?= htmlspecialchars($adopter_id) ?>">
                 <input type="hidden" name="dog_id" value="<?= htmlspecialchars($dog_id) ?>">
-                <button type="submit" name="finalize" class="btn btn-primary"><i class="fas fa-home"></i> Finish</button>
+                <button type="button" id="openModalButton" class="btn btn-primary"><i class="fas fa-home"></i> Finish</button>
             </form>
         </div>
 
     </main>
+
+    <div id="instructionModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Important Information Regarding Your Adoption Request</h2></br>
+            <p>
+                Thank you for your interest in adopting! To finalize your adoption, our Dog Pound personnel will conduct a **Credit Investigation (C.I.)** of your home and an interview. This is to ensure a suitable and safe environment for your adopted dog.
+            </p>
+            <div class="modal-buttons">
+                <button type="button" class="confirm-button" id="confirmFinalize">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get the modal
+        var modal = document.getElementById("instructionModal");
+
+        // Get the button that opens the modal
+        var btn = document.getElementById("openModalButton");
+
+        // Get the <span> element that closes the modal
+        var span = document.getElementsByClassName("close-button")[0];
+
+        // Get the "Understood!" button inside the modal
+        var confirmBtn = document.getElementById("confirmFinalize");
+
+        // Get the form
+        var finalizeForm = document.getElementById("finalizeAdoptionForm");
+
+        // When the user clicks the button, open the modal
+        btn.onclick = function() {
+            modal.style.display = "flex"; // Use flex to center the modal
+        }
+
+        // When the user clicks on <span> (x), close the modal
+        span.onclick = function() {
+            modal.style.display = "none";
+        }
+
+        // When the user clicks "Understood!", submit the form
+        confirmBtn.onclick = function() {
+            modal.style.display = "none"; // Hide the modal
+            // Add a hidden input to signal that the form should be processed
+            var hiddenInput = document.createElement("input");
+            hiddenInput.setAttribute("type", "hidden");
+            hiddenInput.setAttribute("name", "finalize");
+            hiddenInput.setAttribute("value", "1");
+            finalizeForm.appendChild(hiddenInput);
+            finalizeForm.submit(); // Submit the form
+        }
+
+        // When the user clicks anywhere outside of the modal, close it
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+    </script>
 
 </body>
 </html>

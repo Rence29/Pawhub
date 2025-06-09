@@ -2,10 +2,16 @@
 // Database connection
 $conn = new mysqli('localhost', 'root', '', 'dog_found');
 if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+    // Set message for modal instead of dying
+    $message = "Database Connection failed: " . $conn->connect_error;
+    $message_type = 'error';
+    error_log($message); // Log the error for debugging
 }
 
 $user = null; // Initialize user variable
+$message = ""; // Initialize message for the modal
+$message_type = ""; // Initialize message type ('success' or 'error')
+$should_redirect_on_success = false; // Flag to control redirection after modal close
 
 // Check if the ID is provided in the URL
 if (isset($_GET['id'])) {
@@ -13,53 +19,107 @@ if (isset($_GET['id'])) {
 
     // Fetch the user's current data using prepared statement
     $stmt = $conn->prepare("SELECT id, username, full_name, position FROM users WHERE id = ?");
-    $stmt->bind_param("i", $id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($result->num_rows > 0) {
-        $user = $result->fetch_assoc();
+    if ($stmt === false) {
+        $message = "Database prepare error: " . $conn->error;
+        $message_type = 'error';
+        error_log($message);
     } else {
-        echo "User not found.";
-        exit;
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result->num_rows > 0) {
+            $user = $result->fetch_assoc();
+        } else {
+            $message = "User not found.";
+            $message_type = 'error';
+            // If user not found, we shouldn't proceed with the form, so exit
+            // For now, we'll let the modal display the message.
+            // In a real application, you might redirect to user_list.php here.
+        }
+        $stmt->close();
     }
-    $stmt->close();
 } else {
-    echo "No ID provided.";
-    exit;
+    $message = "No user ID provided for editing.";
+    $message_type = 'error';
+    // If no ID, no need to proceed, let the modal show the error
 }
 
 // Handle form submission
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && $user !== null) { // Only process POST if a user was successfully fetched
     // Fetch form data
     $username = trim($_POST['username']);
     $full_name = trim($_POST['full_name']);
     $position = trim($_POST['position']);
     $password = trim($_POST['password']); // New password, if provided
 
-    $update_sql = "";
+    // Assume update is successful unless proven otherwise
+    $update_successful = false;
+
     if (!empty($password)) {
         // Hash the new password if provided
         if (!preg_match('/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/', $password)) {
-            echo "<script>alert('Error: Password must be at least 8 characters long and include both letters and numbers.'); window.location.href='user_edit.php?id=$id';</script>";
-            exit;
+            $message = 'Error: Password must be at least 8 characters long and include both letters and numbers.';
+            $message_type = 'error';
+        } else {
+            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+            // Update with new password
+            $stmt = $conn->prepare("UPDATE users SET username = ?, full_name = ?, position = ?, password = ? WHERE id = ?");
+            if ($stmt === false) {
+                $message = "Database prepare error: " . $conn->error;
+                $message_type = 'error';
+                error_log($message);
+            } else {
+                $stmt->bind_param("ssssi", $username, $full_name, $position, $hashed_password, $id);
+                if ($stmt->execute()) {
+                    $message = "User updated successfully!";
+                    $message_type = 'success';
+                    $update_successful = true;
+                    $should_redirect_on_success = true;
+                } else {
+                    $message = "Error updating record: " . $stmt->error;
+                    $message_type = 'error';
+                    error_log("User update error: " . $stmt->error);
+                }
+                $stmt->close();
+            }
         }
-        $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-        // Update with new password
-        $stmt = $conn->prepare("UPDATE users SET username = ?, full_name = ?, position = ?, password = ? WHERE id = ?");
-        $stmt->bind_param("ssssi", $username, $full_name, $position, $hashed_password, $id);
     } else {
         // Update without changing password
         $stmt = $conn->prepare("UPDATE users SET username = ?, full_name = ?, position = ? WHERE id = ?");
-        $stmt->bind_param("sssi", $username, $full_name, $position, $id);
+        if ($stmt === false) {
+            $message = "Database prepare error: " . $conn->error;
+            $message_type = 'error';
+            error_log($message);
+        } else {
+            $stmt->bind_param("sssi", $username, $full_name, $position, $id);
+            if ($stmt->execute()) {
+                $message = "User updated successfully!";
+                $message_type = 'success';
+                $update_successful = true;
+                $should_redirect_on_success = true;
+            } else {
+                $message = "Error updating record: " . $stmt->error;
+                $message_type = 'error';
+                error_log("User update error: " . $stmt->error);
+            }
+            $stmt->close();
+        }
     }
 
-    if ($stmt->execute()) {
-        echo "<script>alert('User updated successfully!'); window.location.href='user_list.php';</script>";
-    } else {
-        echo "Error updating record: " . $stmt->error;
+    // After updating, re-fetch user data to display the latest info on the form
+    // unless it was an error and the form data should persist
+    if ($update_successful && $should_redirect_on_success) {
+        // We will redirect via JS after modal, no need to re-fetch
+    } elseif ($message_type === 'error' && $user !== null) {
+        // If there was an error and the user was originally found,
+        // update the $user array with the submitted (and potentially invalid) data
+        // so it appears in the form, allowing the user to correct.
+        $user['username'] = $username;
+        $user['full_name'] = $full_name;
+        $user['position'] = $position;
+        // Don't update password in $user, it's never displayed.
     }
-    $stmt->close();
 }
 $conn->close();
 ?>
@@ -116,17 +176,17 @@ $conn->close();
                     <span>Adopt Requests</span>
                 </a>
             </li>
-             <li class="menu-item active"> 
-                    <a href="../adoption/adoption_history.php">
-                        <i class='bx bx-archive'></i> 
-                        <span>Adoption History</span>
-                    </a>
+            <li class="menu-item">
+                <a href="../adoption/adoption_history.php">
+                    <i class='bx bx-archive'></i>
+                    <span>Adoption History</span>
+                </a>
+            </li>
 
             <div class="menu-divider"></div>
 
             <li class="menu-item">
-                <a href="user/user_list.php" class="active">
-                    <i class='bx bx-cog'></i>
+                <a href="user_list.php" class="active"> <i class='bx bx-cog'></i>
                     <span>User Settings</span>
                 </a>
             </li>
@@ -149,7 +209,8 @@ $conn->close();
         <div class="form-container">
             <h2>Edit User Details</h2>
 
-            <form method="POST" action="">
+            <?php if ($user): // Only display form if user data was fetched successfully ?>
+            <form method="POST" action="user_edit.php?id=<?= htmlspecialchars($id) ?>">
                 <div class="form-group">
                     <label for="username">Username</label>
                     <input
@@ -196,8 +257,21 @@ $conn->close();
                     <button type="submit" class="btn btn-primary">Update User</button>
                 </div>
             </form>
+            <?php else: ?>
+                <p>Unable to load user data. Please go back to the user list.</p>
+            <?php endif; ?>
         </div>
     </main>
+
+    <div id="statusModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <div class="modal-icon" id="modalIcon"></div>
+            <h3 id="modalTitle"></h3>
+            <p id="modalMessage"></p>
+            <button class="btn" onclick="handleModalClose()">OK</button>
+        </div>
+    </div>
 
     <script>
         // Toggle password visibility
@@ -222,11 +296,55 @@ $conn->close();
             const menuItems = document.querySelectorAll('.menu-item a');
 
             menuItems.forEach(item => {
-                const linkHref = item.getAttribute('href');
-                if (linkHref && linkHref.endsWith(currentPage)) {
+                const linkHref = item.getAttribute('href').split('/').pop();
+                // Special handling: user_edit.php should highlight user_list.php in sidebar
+                if (currentPage === 'user_edit.php' && linkHref === 'user_list.php') {
+                    item.classList.add('active');
+                } else if (linkHref === currentPage) {
                     item.classList.add('active');
                 }
             });
+
+            // Modal Logic
+            const statusModal = document.getElementById('statusModal');
+            const closeButton = statusModal.querySelector('.close-button');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalMessage = document.getElementById('modalMessage');
+            const modalIcon = document.getElementById('modalIcon');
+            const modalContent = statusModal.querySelector('.modal-content');
+
+            // PHP variables to JS
+            const message = "<?php echo isset($message) ? htmlspecialchars($message) : ''; ?>";
+            const messageType = "<?php echo isset($message_type) ? htmlspecialchars($message_type) : ''; ?>";
+            const shouldRedirectOnSuccess = <?php echo json_encode($should_redirect_on_success); ?>;
+
+            // Only show modal if there's a message
+            if (message) {
+                modalTitle.textContent = messageType === 'success' ? "Success!" : "Error!";
+                modalMessage.textContent = message;
+                modalIcon.innerHTML = messageType === 'success' ? "<i class='bx bx-check-circle'></i>" : "<i class='bx bx-x-circle'></i>";
+                modalContent.classList.add(messageType);
+                statusModal.classList.add('show');
+            }
+
+            // Function to handle modal close and potential redirection
+            window.handleModalClose = function() {
+                statusModal.classList.remove('show');
+                modalContent.classList.remove('success', 'error'); // Clean up classes
+                if (shouldRedirectOnSuccess) {
+                    window.location.href = 'user_list.php'; // Redirect to user_list.php
+                }
+            };
+
+            // Close modal when clicking on the close button
+            closeButton.onclick = handleModalClose;
+
+            // Close modal when clicking anywhere outside of the modal content
+            window.onclick = function(event) {
+                if (event.target == statusModal) {
+                    handleModalClose();
+                }
+            };
         });
     </script>
 

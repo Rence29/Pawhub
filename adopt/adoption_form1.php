@@ -80,17 +80,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             <form action="" method="POST" class="form-grid">
                 <div class="form-group">
-                    <label class="required-field">Name</label>
+                    <label class="field">Name</label>
                     <input type="text" name="name" placeholder="Full name" required>
                 </div>
 
                 <div class="form-group">
-                    <label class="required-field">Age</label>
-                    <input type="number" name="age" placeholder="Age" required>
+                    <label class="field">Age</label>
+                    <input type="number" name="age" placeholder="Age" >
                 </div>
 
                 <div class="form-group">
-                    <label class="required-field">Contact Number</label>
+                    <label class="field">Contact Number</label>
                     <input
                         type="tel"
                         name="contact_number"
@@ -105,13 +105,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </div>
 
                 <div class="form-group">
-                    <label class="required-field">Email Address</label>
-                    <input type="email" name="email" placeholder="Email Address" required>
+                    <label class="field">Email Address</label>
+                    <input type="email" name="email" placeholder="Email Address">
                 </div>
 
                 <div class="form-group">
                     <label class="required-field">Address</label>
-                    <input type="text" name="address" placeholder="#Unit/Street/Barangay/City" required>
+                    <input type="text" name="address" placeholder="#Unit/Street/Barangay/City">
                 </div>
 
                 <div class="form-group">

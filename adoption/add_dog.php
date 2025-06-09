@@ -7,111 +7,116 @@ if (!isset($_SESSION['username'])) {
     exit();
 }
 
+// Initialize message variables
+$message = '';
+$message_type = ''; // 'success' or 'error'
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $conn = new mysqli('localhost', 'root', '', 'dog_found');
     if ($conn->connect_error) {
-        // It's better to log the error and show a generic message to the user
         error_log("Database Connection failed: " . $conn->connect_error);
-        die("Connection failed: Please try again later.");
-    }
+        $message = "Connection failed: Please try again later.";
+        $message_type = 'error';
+    } else {
+        $dog_breed = isset($_POST['dog_breed']) ? $_POST['dog_breed'] : '';
+        $dog_color = isset($_POST['dog_color']) ? $_POST['dog_color'] : '';
+        $dog_age = isset($_POST['dog_age']) ? $_POST['dog_age'] : '';
+        $dog_sex = isset($_POST['dog_sex']) ? $_POST['dog_sex'] : '';
+        $dog_behavior = isset($_POST['dog_behavior']) ? $_POST['dog_behavior'] : '';
+        $dog_size = isset($_POST['dog_size']) ? $_POST['dog_size'] : '';
+        $dog_health_condition = isset($_POST['health_condition']) ? $_POST['health_condition'] : '';
 
-    $dog_breed = isset($_POST['dog_breed']) ? $_POST['dog_breed'] : '';
-    $dog_color = isset($_POST['dog_color']) ? $_POST['dog_color'] : '';
-    $dog_age = isset($_POST['dog_age']) ? $_POST['dog_age'] : '';
-    $dog_sex = isset($_POST['dog_sex']) ? $_POST['dog_sex'] : '';
-    $dog_behavior = isset($_POST['dog_behavior']) ? $_POST['dog_behavior'] : '';
-    $dog_size = isset($_POST['dog_size']) ? $_POST['dog_size'] : '';
-    
-    // --- IMPORTANT FIX HERE ---
-    // Change 'dog_health_condition' to 'health_condition' to match your HTML form's 'name' attribute
-    $dog_health_condition = isset($_POST['health_condition']) ? $_POST['health_condition'] : ''; 
-    // --- END FIX ---
-
-    $target_dir = "uploads/";
-    // Ensure the uploads directory exists
-    if (!file_exists($target_dir)) {
-        mkdir($target_dir, 0777, true);
-    }
-
-    $dog_image = null; // Initialize dog_image to null
-    $uploadOk = 1; // Flag for upload status
-
-    // Handle file upload
-    if (isset($_FILES["dog_image"]) && $_FILES["dog_image"]["error"] == UPLOAD_ERR_OK) {
-        $original_filename = basename($_FILES["dog_image"]["name"]);
-        $file_extension = strtolower(pathinfo($original_filename, PATHINFO_EXTENSION));
-        // Create a unique filename to prevent overwriting
-        $unique_filename = uniqid() . "_" . time() . "." . $file_extension;
-        $target_file = $target_dir . $unique_filename;
-
-        // Check if image file is an actual image
-        $check = getimagesize($_FILES["dog_image"]["tmp_name"]);
-        if ($check === false) {
-            echo "<script>alert('File is not an image. Please upload a valid image file (JPG, JPEG, PNG, GIF).');</script>";
-            $uploadOk = 0;
+        $target_dir = "uploads/";
+        if (!file_exists($target_dir)) {
+            mkdir($target_dir, 0777, true);
         }
 
-        // Check file size (max 500KB)
-        if ($_FILES["dog_image"]["size"] > 500000) {
-            echo "<script>alert('Sorry, your image file is too large. Max size is 500KB.');</script>";
-            $uploadOk = 0;
-        }
+        $dog_image = null;
+        $uploadOk = 1;
 
-        // Allow certain file formats
-        if (!in_array($file_extension, ["jpg", "jpeg", "png", "gif"])) {
-            echo "<script>alert('Sorry, only JPG, JPEG, PNG & GIF files are allowed for the dog image.');</script>";
-            $uploadOk = 0;
-        }
+        // Handle file upload
+        if (isset($_FILES["dog_image"]) && $_FILES["dog_image"]["error"] == UPLOAD_ERR_OK) {
+            $original_filename = basename($_FILES["dog_image"]["name"]);
+            $file_extension = strtolower(pathinfo($original_filename, PATHINFO_EXTENSION));
+            $unique_filename = uniqid() . "_" . time() . "." . $file_extension;
+            $target_file = $target_dir . $unique_filename;
 
-        // Attempt to upload file
-        if ($uploadOk == 1) {
-            if (move_uploaded_file($_FILES["dog_image"]["tmp_name"], $target_file)) {
-                $dog_image = $target_file;
-            } else {
-                echo "<script>alert('Sorry, there was an error uploading your image file. Error code: " . $_FILES["dog_image"]["error"] . "');</script>";
+            $check = getimagesize($_FILES["dog_image"]["tmp_name"]);
+            if ($check === false) {
+                $message = 'File is not an image. Please upload a valid image file (JPG, JPEG, PNG, GIF).';
+                $message_type = 'error';
                 $uploadOk = 0;
             }
-        }
-    } else {
-        // Handle cases where no file was selected or an upload error occurred
-        if ($_FILES["dog_image"]["error"] == UPLOAD_ERR_NO_FILE) {
-             echo "<script>alert('Please select an image file for the dog.');</script>";
-        } else {
-            echo "<script>alert('An error occurred during image upload: " . $_FILES["dog_image"]["error"] . "');</script>";
-        }
-        $uploadOk = 0; // Set uploadOk to 0 if no valid file was uploaded
-    }
 
-    // Proceed with database insertion only if image upload was successful and other required fields are not empty
-    if ($uploadOk == 1 && !empty($dog_breed) && !empty($dog_color) && !empty($dog_age) && !empty($dog_sex) && !empty($dog_behavior) && !empty($dog_size) && !empty($dog_health_condition)) {
-        // Using prepared statements for security
-        $sql = "INSERT INTO adoption_list (dog_image, dog_breed, dog_color, dog_age, dog_sex, dog_behavior, dog_size, health_condition)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-        
-        $stmt = $conn->prepare($sql);
-
-        if ($stmt === false) {
-            error_log("Prepare statement failed: " . $conn->error);
-            echo "<script>alert('Database error: Unable to prepare statement.');</script>";
-        } else {
-            // "ssssssss" indicates all parameters are strings. Adjust if dog_age is INT.
-            // Ensure data types match your database schema. If dog_age is INT, use "i".
-            $stmt->bind_param("ssssssss", $dog_image, $dog_breed, $dog_color, $dog_age, $dog_sex, $dog_behavior, $dog_size, $dog_health_condition);
-
-            if ($stmt->execute()) {
-                header("Location: adoption_list.php");
-                exit();
-            } else {
-                error_log("Error inserting dog data: " . $stmt->error);
-                echo "<script>alert('Error inserting dog data: " . $stmt->error . "');</script>";
+            if ($_FILES["dog_image"]["size"] > 500000) {
+                $message = 'Sorry, your image file is too large. Max size is 500KB.';
+                $message_type = 'error';
+                $uploadOk = 0;
             }
-            $stmt->close();
-        }
-    } else if ($uploadOk == 1) { // If image was uploaded but other required fields are missing
-         echo "<script>alert('Please fill in all required dog information fields.');</script>";
-    }
 
-    $conn->close();
+            if (!in_array($file_extension, ["jpg", "jpeg", "png", "gif"])) {
+                $message = 'Sorry, only JPG, JPEG, PNG & GIF files are allowed for the dog image.';
+                $message_type = 'error';
+                $uploadOk = 0;
+            }
+
+            if ($uploadOk == 1) {
+                if (move_uploaded_file($_FILES["dog_image"]["tmp_name"], $target_file)) {
+                    $dog_image = $target_file;
+                } else {
+                    $message = 'Sorry, there was an error uploading your image file. Error code: ' . $_FILES["dog_image"]["error"];
+                    $message_type = 'error';
+                    $uploadOk = 0;
+                }
+            }
+        } else {
+            if (isset($_FILES["dog_image"]) && $_FILES["dog_image"]["error"] == UPLOAD_ERR_NO_FILE) {
+                $message = 'Please select an image file for the dog.';
+                $message_type = 'error';
+            } else if (isset($_FILES["dog_image"])) { // Other upload errors
+                $message = 'An error occurred during image upload: ' . $_FILES["dog_image"]["error"];
+                $message_type = 'error';
+            } else { // No file was even attempted to be uploaded (e.g., if input was missing)
+                 $message = 'Image file input missing or invalid.';
+                 $message_type = 'error';
+            }
+            $uploadOk = 0;
+        }
+
+        // Proceed with database insertion only if image upload was successful and other required fields are not empty
+        if ($uploadOk == 1 && !empty($dog_breed) && !empty($dog_color) && !empty($dog_age) && !empty($dog_sex) && !empty($dog_behavior) && !empty($dog_size) && !empty($dog_health_condition)) {
+            // Using prepared statements for security
+            $sql = "INSERT INTO adoption_list (dog_image, dog_breed, dog_color, dog_age, dog_sex, dog_behavior, dog_size, health_condition)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            
+            $stmt = $conn->prepare($sql);
+
+            if ($stmt === false) {
+                error_log("Prepare statement failed: " . $conn->error);
+                $message = 'Database error: Unable to prepare statement.';
+                $message_type = 'error';
+            } else {
+                // "ssssssss" indicates all parameters are strings. Adjust if dog_age is INT.
+                // Ensure data types match your database schema. If dog_age is INT, use "i".
+                $stmt->bind_param("ssssssss", $dog_image, $dog_breed, $dog_color, $dog_age, $dog_sex, $dog_behavior, $dog_size, $dog_health_condition);
+
+                if ($stmt->execute()) {
+                    $message = 'Dog added for adoption successfully!';
+                    $message_type = 'success';
+                } else {
+                    error_log("Error inserting dog data: " . $stmt->error);
+                    $message = 'Error inserting dog data: ' . $stmt->error;
+                    $message_type = 'error';
+                }
+                $stmt->close();
+            }
+        } else if ($uploadOk == 1 && (empty($dog_breed) || empty($dog_color) || empty($dog_age) || empty($dog_sex) || empty($dog_behavior) || empty($dog_size) || empty($dog_health_condition))) {
+            $message = 'Please fill in all required dog information fields.';
+            $message_type = 'error';
+        }
+
+        $conn->close();
+    }
 }
 ?>
 
@@ -193,7 +198,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <div class="page-title">
                     <h1>Add Dog for Adoption</h1>
                 </div>
-                </div>
+            </div>
 
             <div class="form-container">
                 <div class="form-header">
@@ -224,7 +229,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <option value="4-6 years old">4-6 years old</option>
                                     <option value="7 years old and above">7 years old and above</option>
                                 </select>
-                            </div>  
+                            </div> 
                         </div>
 
                         <div>
@@ -270,19 +275,73 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </main>
     </div>
 
+    <div id="statusModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <div class="modal-icon" id="modalIcon"></div>
+            <h3 id="modalTitle"></h3>
+            <p id="modalMessage"></p>
+            <button class="btn" onclick="handleModalClose()">OK</button> </div>
+    </div>
+
     <script>
-        // Add active class to current menu item
         document.addEventListener('DOMContentLoaded', function() {
+            // Add active class to current menu item
             const currentPage = window.location.pathname.split('/').pop();
             const menuItems = document.querySelectorAll('.menu-item a');
             
             menuItems.forEach(item => {
-                // Adjust this logic if your hrefs are relative to the root or absolute
                 const itemHref = item.getAttribute('href').split('/').pop(); 
-                if (itemHref === currentPage) {
+                // Special handling for 'add_dog.php' if 'adoption_list.php' is its parent menu item
+                if (itemHref === currentPage || (currentPage === 'add_dog.php' && itemHref === 'adoption_list.php')) {
                     item.classList.add('active');
                 }
             });
+
+            // Modal Logic
+            const statusModal = document.getElementById('statusModal');
+            const closeButton = statusModal.querySelector('.close-button'); // Select from statusModal
+            const modalTitle = document.getElementById('modalTitle');
+            const modalMessage = document.getElementById('modalMessage');
+            const modalIcon = document.getElementById('modalIcon');
+            const modalContent = statusModal.querySelector('.modal-content'); // Select from statusModal
+
+            // PHP variables to JS
+            const message = "<?php echo $message; ?>";
+            const messageType = "<?php echo $message_type; ?>";
+
+            let shouldRedirect = false; // Flag to control redirection
+
+            if (message) { // Only show modal if there's a message
+                modalTitle.textContent = messageType === 'success' ? "Success!" : "Error!";
+                modalMessage.textContent = message;
+                modalIcon.innerHTML = messageType === 'success' ? "<i class='bx bx-check-circle'></i>" : "<i class='bx bx-x-circle'></i>";
+                modalContent.classList.add(messageType);
+                statusModal.classList.add('show');
+
+                if (messageType === 'success') {
+                    shouldRedirect = true;
+                }
+            }
+
+            // Function to handle modal close and potential redirection
+            window.handleModalClose = function() { // Make it global so HTML onclick can access it
+                statusModal.classList.remove('show');
+                modalContent.classList.remove('success', 'error'); // Clean up classes
+                if (shouldRedirect) {
+                    window.location.href = 'adoption_list.php'; // Redirect to adoption_list.php
+                }
+            };
+
+            // Close modal when clicking on the close button
+            closeButton.onclick = handleModalClose;
+
+            // Close modal when clicking anywhere outside of the modal content
+            window.onclick = function(event) {
+                if (event.target == statusModal) {
+                    handleModalClose();
+                }
+            };
         });
     </script>
 </body>

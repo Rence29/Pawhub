@@ -12,7 +12,6 @@ if (isset($_GET['search'])) {
 }
 
 // Fetch all adoption history records
-// The query directly selects from adoption_history as adopter_id and dog_id are removed
 $sql = "
     SELECT ah.*
     FROM adoption_history ah
@@ -37,6 +36,7 @@ $result = $stmt->get_result();
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="../img/Pawhubicon.png">
     <link rel="stylesheet" href="../css/adoption_record.css">
+
 </head>
 <body>
     <div class="dashboard-container">
@@ -137,7 +137,6 @@ $result = $stmt->get_result();
                             <th>Dog Info</th>
                             <th>Status</th>
                             <th>Requested On</th>
-                            <th>Processed On</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -145,8 +144,10 @@ $result = $stmt->get_result();
                             <?php while ($row = $result->fetch_assoc()): ?>
                             <tr>
                                 <td><b><?php echo htmlspecialchars($row['adopter_name']); ?></b></td>
-                                <td><b><?php echo htmlspecialchars($row['adopter_email']); ?>
-                                <?php echo htmlspecialchars($row['adopter_phone']);?></b></td>
+                                <td>
+                                    <b><?php echo htmlspecialchars($row['adopter_email']); ?></b><br>
+                                    <b><?php echo htmlspecialchars($row['adopter_phone']);?></b>
+                                </td>
                                 <td><?php echo htmlspecialchars($row['adopter_address']); ?></td>
                                 <td>
                                     Age: <?php echo htmlspecialchars($row['adopter_age']); ?><br>
@@ -167,16 +168,17 @@ $result = $stmt->get_result();
                                     Size: <?php echo htmlspecialchars($row['dog_size']); ?><br>
                                     Behavior: <?php echo htmlspecialchars($row['dog_behavior']); ?>
                                 </td>
-                                <td><?php echo htmlspecialchars($row['status']); ?></td>
-                                <td><?php echo htmlspecialchars($row['request_date']); ?></td>
-                                <td><?php echo htmlspecialchars($row['processed_date']); ?></td>
                                 <td>
+                                    <span class="status-badge status-<?php echo strtolower($row['final_status']); ?>">
+                                        <?php echo htmlspecialchars($row['final_status']); ?>
+                                    </span>
                                 </td>
+                                <td><?php echo htmlspecialchars($row['request_date']); ?></td>
                             </tr>
                             <?php endwhile; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="11" class="no-records">No adoption history records found.</td>
+                                <td colspan="9" class="no-records">No adoption history records found.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>

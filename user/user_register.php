@@ -1,10 +1,15 @@
 <?php
 $conn = new mysqli('localhost', 'root', '', 'dog_found');
 if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+    // Set message for modal instead of dying
+    $message = "Database Connection failed: " . $conn->connect_error;
+    $message_type = 'error';
+    // Consider logging the error for debugging
+    error_log($message);
 }
 
-$error = $success = "";
+$message = ""; // Initialize message for the modal
+$message_type = ""; // Initialize message type ('success' or 'error')
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = trim($_POST['username']);
@@ -14,11 +19,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $confirm_password = trim($_POST['confirm_password']);
 
     if (empty($username) || empty($full_name) || empty($position) || empty($password) || empty($confirm_password)) {
-        $error = "All fields are required.";
+        $message = "All fields are required.";
+        $message_type = 'error';
     } elseif ($password !== $confirm_password) {
-        $error = "Passwords do not match.";
+        $message = "Passwords do not match.";
+        $message_type = 'error';
     } elseif (!preg_match('/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/', $password)) {
-        $error = "Password must be at least 8 characters long and include both letters and numbers.";
+        $message = "Password must be at least 8 characters long and include both letters and numbers.";
+        $message_type = 'error';
     } else {
         $check = $conn->prepare("SELECT id FROM users WHERE username = ?");
         $check->bind_param("s", $username);
@@ -26,18 +34,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $check->store_result();
 
         if ($check->num_rows > 0) {
-            $error = "Username already exists. Please choose another.";
+            $message = "Username already exists. Please choose another.";
+            $message_type = 'error';
         } else {
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
             $stmt = $conn->prepare("INSERT INTO users (username, full_name, position, password) VALUES (?, ?, ?, ?)");
             $stmt->bind_param("ssss", $username, $full_name, $position, $hashed_password);
 
             if ($stmt->execute()) {
-                $success = "User registered successfully.";
+                $message = "User registered successfully.";
+                $message_type = 'success';
                 // Optionally clear the form fields after successful registration
                 $username = $full_name = $position = $password = $confirm_password = '';
             } else {
-                $error = "Error: " . $stmt->error;
+                $message = "Error: " . $stmt->error;
+                $message_type = 'error';
+                error_log("User registration error: " . $stmt->error); // Log database error
             }
             $stmt->close();
         }
@@ -99,16 +111,17 @@ $conn->close();
                     <span>Adopt Requests</span>
                 </a>
             </li>
-             <li class="menu-item active"> 
-                    <a href="../adoption/adoption_history.php">
-                        <i class='bx bx-archive'></i> 
-                        <span>Adoption History</span>
-                    </a>
+            <li class="menu-item">
+                <a href="../adoption/adoption_history.php">
+                    <i class='bx bx-archive'></i>
+                    <span>Adoption History</span>
+                </a>
+            </li>
 
             <div class="menu-divider"></div>
 
             <li class="menu-item">
-                <a href="user/user_list.php" class="active">
+                <a href="user_list.php" class="active">
                     <i class='bx bx-cog'></i>
                     <span>User Settings</span>
                 </a>
@@ -131,13 +144,6 @@ $conn->close();
 
         <div class="form-container">
             <h2>Register New User</h2>
-
-            <?php if ($error): ?>
-                <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
-            <?php endif; ?>
-            <?php if ($success): ?>
-                <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
-            <?php endif; ?>
 
             <form method="post" action="user_register.php">
                 <div class="form-group">
@@ -171,6 +177,16 @@ $conn->close();
         </div>
     </main>
 
+    <div id="statusModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <div class="modal-icon" id="modalIcon"></div>
+            <h3 id="modalTitle"></h3>
+            <p id="modalMessage"></p>
+            <button class="btn" onclick="handleModalClose()">OK</button>
+        </div>
+    </div>
+
     <script>
         // Toggle both password fields and eye icons simultaneously
         document.querySelectorAll('.toggle-password').forEach(icon => {
@@ -179,6 +195,10 @@ $conn->close();
                 const confirmInput = document.getElementById('confirm_password');
                 const isPasswordShown = passwordInput.type === 'text';
 
+                // Check which input is associated with the clicked icon
+                // This approach is more robust if there are multiple password fields with individual toggles
+                // However, since your current script toggles both, we'll keep that behavior.
+                // If you want individual toggles, you'd modify this to find the *sibling* input.
                 if (isPasswordShown) {
                     // Hide both passwords
                     passwordInput.type = 'password';
@@ -199,11 +219,66 @@ $conn->close();
             const menuItems = document.querySelectorAll('.menu-item a');
 
             menuItems.forEach(item => {
-                const linkHref = item.getAttribute('href');
-                if (linkHref && linkHref.endsWith(currentPage)) {
+                const linkHref = item.getAttribute('href').split('/').pop();
+                if (linkHref === currentPage) {
                     item.classList.add('active');
                 }
             });
+
+            // Modal Logic
+            const statusModal = document.getElementById('statusModal');
+            const closeButton = statusModal.querySelector('.close-button');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalMessage = document.getElementById('modalMessage');
+            const modalIcon = document.getElementById('modalIcon');
+            const modalContent = statusModal.querySelector('.modal-content');
+
+            // PHP variables to JS
+            const message = "<?php echo isset($message) ? htmlspecialchars($message) : ''; ?>";
+            const messageType = "<?php echo isset($message_type) ? htmlspecialchars($message_type) : ''; ?>";
+
+            let shouldClearForm = false; // Flag to indicate if form should be cleared
+
+            // Only show modal if there's a message
+            if (message) {
+                modalTitle.textContent = messageType === 'success' ? "Success!" : "Error!";
+                modalMessage.textContent = message;
+                modalIcon.innerHTML = messageType === 'success' ? "<i class='bx bx-check-circle'></i>" : "<i class='bx bx-x-circle'></i>";
+                modalContent.classList.add(messageType);
+                statusModal.classList.add('show');
+
+                if (messageType === 'success') {
+                    shouldClearForm = true; // Set flag to clear form on success
+                }
+            }
+
+            // Function to handle modal close and potential form clearing
+            window.handleModalClose = function() {
+                statusModal.classList.remove('show');
+                modalContent.classList.remove('success', 'error'); // Clean up classes
+                if (shouldClearForm) {
+                    // Clear the form fields after successful registration
+                    document.getElementById('username').value = '';
+                    document.getElementById('full_name').value = '';
+                    document.getElementById('position').value = '';
+                    document.getElementById('password').value = '';
+                    document.getElementById('confirm_password').value = '';
+                    // Reset password fields type to 'password' and icon to 'eye-outline'
+                    document.getElementById('password').type = 'password';
+                    document.getElementById('confirm_password').type = 'password';
+                    document.querySelectorAll('.toggle-password').forEach(ic => ic.name = 'eye-outline');
+                }
+            };
+
+            // Close modal when clicking on the close button
+            closeButton.onclick = handleModalClose;
+
+            // Close modal when clicking anywhere outside of the modal content
+            window.onclick = function(event) {
+                if (event.target == statusModal) {
+                    handleModalClose();
+                }
+            };
         });
     </script>
 

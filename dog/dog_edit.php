@@ -4,10 +4,14 @@
 
 $conn = new mysqli('localhost', 'root', '', 'dog_found');
 if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+    // Log the error instead of dying directly in production for a better user experience
+    error_log("Connection failed: " . $conn->connect_error);
+    $error_message = "Database connection failed. Please try again later.";
 }
 
 $dog = null; // Initialize $dog to null
+$success_message = ""; // Initialize success message for modal
+$error_message = "";   // Initialize error message for modal
 
 if (isset($_GET['id'])) {
     $dog_id = $_GET['id'];
@@ -15,56 +19,80 @@ if (isset($_GET['id'])) {
     $stmt = $conn->prepare($sql);
     // Check if prepare was successful
     if ($stmt === false) {
-        die("Prepare failed: " . $conn->error);
+        error_log("Prepare failed: " . $conn->error);
+        $error_message = "Failed to prepare dog data retrieval.";
+        // Exit if we can't even get the dog data
+        // It's better to render the page with an error message than just exit for UX.
+        // For now, let's keep it as exit if dog data cannot be fetched for editing.
+        // If this were a production app, more graceful error handling would be needed.
+        exit; 
     }
     $stmt->bind_param("i", $dog_id);
     $stmt->execute();
     $result = $stmt->get_result();
     $dog = $result->fetch_assoc();
     if (!$dog) {
-        echo "Dog not found.";
+        $error_message = "Dog not found with the provided ID.";
+        // No dog found, no need to proceed with form or updates
         exit;
     }
     $stmt->close(); // Close the select statement
 } else {
-    echo "No dog id provided.";
+    $error_message = "No dog ID provided for editing.";
+    // No ID provided, no need to proceed
     exit;
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $dog_control_number = $_POST['dog_control_number'];
-    $owner_name = $_POST['owner_name'];
-    $dog_name = $_POST['dog_name'];
-    $owner_occupation = $_POST['owner_occupation'];
-    $owner_birthday = $_POST['owner_birthday'];
-    // Removed owner_contact_number from $_POST
-    $dog_origin = $_POST['dog_origin'];
-    $dog_breed = $_POST['dog_breed'];
-    $dog_age = $_POST['dog_age'];
-    $dog_color = $_POST['dog_color'];
-    $dog_sex = $_POST['dog_sex'];
-    $barangay = $_POST['barangay']; 
-    $vaccination_status = $_POST['vaccination_status'];
-    $deceased = $_POST['deceased'];
-    $registration_date = $_POST['registration_date'];
+    // Sanitize and get POST variables
+    $dog_control_number = htmlspecialchars($_POST['dog_control_number']);
+    $owner_name = htmlspecialchars($_POST['owner_name']);
+    $dog_name = htmlspecialchars($_POST['dog_name']);
+    $owner_occupation = htmlspecialchars($_POST['owner_occupation']);
+    $owner_birthday = htmlspecialchars($_POST['owner_birthday']);
+    $dog_origin = htmlspecialchars($_POST['dog_origin']);
+    $dog_breed = htmlspecialchars($_POST['dog_breed']);
+    $dog_age = htmlspecialchars($_POST['dog_age']);
+    $dog_color = htmlspecialchars($_POST['dog_color']);
+    $dog_sex = htmlspecialchars($_POST['dog_sex']);
+    $barangay = htmlspecialchars($_POST['barangay']);
+    $vaccination_status = htmlspecialchars($_POST['vaccination_status']);
+    $deceased = htmlspecialchars($_POST['deceased']);
+    $registration_date = htmlspecialchars($_POST['registration_date']);
 
-    // Update the SQL query - owner_contact_number column removed
+    // Update the SQL query
     $update_sql = "UPDATE dogs SET dog_control_number = ?, owner_name = ?, dog_name = ?, owner_occupation = ?, owner_birthday = ?, dog_origin = ?, dog_breed = ?, dog_age = ?, dog_color = ?, dog_sex = ?, barangay = ?, vaccination_status = ?, deceased = ?, registration_date = ? WHERE id = ?";
     $update_stmt = $conn->prepare($update_sql);
-    // Check if prepare was successful
-    if ($update_stmt === false) {
-        die("Prepare failed: " . $conn->error);
-    }
-    // Updated bind_param string - 's' for owner_contact_number removed
-    $update_stmt->bind_param("ssssssssssssssi",$dog_control_number, $owner_name, $dog_name, $owner_occupation, $owner_birthday, $dog_origin, $dog_breed, $dog_age, $dog_color, $dog_sex, $barangay, $vaccination_status, $deceased, $registration_date, $dog_id);
     
-    if ($update_stmt->execute()) {
-        header("Location: dog_list.php");
-        exit;
+    if ($update_stmt === false) {
+        error_log("Prepare failed: " . $conn->error);
+        $error_message = "Failed to prepare update statement: " . $conn->error;
     } else {
-        echo "Error updating record: " . $update_stmt->error;
+        // CORRECTED LINE 71:
+        // Changed "ssssssssssssi" to "ssssssssssssssi" to match the 15 parameters
+        // And ensure $dog_id is the last variable.
+        $update_stmt->bind_param(
+            "ssssssssssssssi", // 14 's' for strings, 1 'i' for integer dog_id
+            $dog_control_number, $owner_name, $dog_name, $owner_occupation, $owner_birthday, $dog_origin,
+            $dog_breed, $dog_age, $dog_color, $dog_sex, $barangay, $vaccination_status, $deceased, $registration_date, $dog_id
+        );
+        
+        if ($update_stmt->execute()) {
+            $success_message = "Dog details updated successfully!";
+            // Re-fetch dog data to display updated values in the form after success
+            $sql_re_fetch = "SELECT * FROM dogs WHERE id = ?";
+            $stmt_re_fetch = $conn->prepare($sql_re_fetch);
+            $stmt_re_fetch->bind_param("i", $dog_id);
+            $stmt_re_fetch->execute();
+            $result_re_fetch = $stmt_re_fetch->get_result();
+            $dog = $result_re_fetch->fetch_assoc();
+            $stmt_re_fetch->close();
+        } else {
+            $error_message = "Error updating record: " . $update_stmt->error;
+            error_log("Error updating record: " . $update_stmt->error);
+        }
+        $update_stmt->close(); // Close the update statement
     }
-    $update_stmt->close(); // Close the update statement
 }
 
 // Hardcoded list of barangays for the dropdown
@@ -129,11 +157,12 @@ $conn->close();
                         <span>Adopt Requests</span>
                     </a>
                 </li>
-                 <li class="menu-item active"> 
+                <li class="menu-item"> 
                     <a href="../adoption/adoption_history.php">
                         <i class='bx bx-archive'></i> 
                         <span>Adoption History</span>
                     </a>
+                </li>
                 
                 <div class="menu-divider"></div>
                 
@@ -169,8 +198,8 @@ $conn->close();
                     <div class="form-grid">
                         <div>
                             <div class="form-group">
-                                <label for="dog_control_number">Dog Control Number *</label>
-                                <input type="text" class="form-control" id="dog_control_number" name="dog_control_number" value="<?= htmlspecialchars($dog['dog_control_number']) ?>" readonly>
+                                <label for="dog_control_number">Dog Control Number</label>
+                                <input type="text" class="form-control" id="dog_control_number" name="dog_control_number" value="<?= htmlspecialchars($dog['dog_control_number']) ?>" required>
                             </div>
 
                             <div class="form-group">
@@ -196,7 +225,7 @@ $conn->close();
 
                         <div>
                             <div class="form-group">
-                                <label for="dog_origin">Dog Origin *</label>
+                                <label for="dog_origin">Dog Origin </label>
                                 <select class="form-control" id="dog_origin" name="dog_origin" required>
                                     <option value="" disabled>Select Origin</option>
                                     <option value="Local" <?= ($dog['dog_origin'] == 'Local') ? 'selected' : '' ?>>Local</option>
@@ -220,7 +249,7 @@ $conn->close();
                             </div>
 
                             <div class="form-group">
-                                <label for="dog_sex">Dog Sex *</label>
+                                <label for="dog_sex">Dog Sex </label>
                                 <select class="form-control" id="dog_sex" name="dog_sex" required>
                                     <option value="" disabled>Select Sex</option>
                                     <option value="Male Castrated" <?= ($dog['dog_sex'] == 'Male Castrated') ? 'selected' : '' ?>>Male Castrated</option>
@@ -233,7 +262,7 @@ $conn->close();
 
                         <div>
                             <div class="form-group">
-                                <label for="barangay">Barangay *</label>
+                                <label for="barangay">Barangay </label>
                                 <select class="form-control" id="barangay" name="barangay" required>
                                     <option value="" disabled selected>Select Barangay</option>
                                     <?php foreach ($barangay_options as $b_option): ?>
@@ -245,7 +274,7 @@ $conn->close();
                             </div>
 
                             <div class="form-group">
-                                <label for="vaccination_status">Vaccination Status *</label>
+                                <label for="vaccination_status">Vaccination Status </label>
                                 <select class="form-control" id="vaccination_status" name="vaccination_status" required>
                                     <option value="" disabled>Select Status</option>
                                     <option value="Fully Vaccinated" <?= ($dog['vaccination_status'] == 'Fully Vaccinated') ? 'selected' : '' ?>>Vaccinated</option>
@@ -254,7 +283,7 @@ $conn->close();
                             </div>
 
                             <div class="form-group">
-                                <label for="deceased">Deceased *</label>
+                                <label for="deceased">Deceased </label>
                                 <select class="form-control" id="deceased" name="deceased" required>
                                     <option value="" disabled>Select</option>
                                     <option value="Yes" <?= ($dog['deceased'] == 'Yes') ? 'selected' : '' ?>>Yes</option>
@@ -263,7 +292,7 @@ $conn->close();
                             </div>
 
                             <div class="form-group">
-                                <label for="registration_date">Registration Date *</label>
+                                <label for="registration_date">Registration Date </label>
                                 <input type="date" class="form-control" id="registration_date" name="registration_date" value="<?= htmlspecialchars($dog['registration_date']) ?>" required>
                             </div>
                         </div>
@@ -282,6 +311,15 @@ $conn->close();
         </main>
     </div>
 
+    <div id="statusModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <div class="modal-icon" id="modalIcon"></div>
+            <h3 id="modalTitle"></h3>
+            <p id="modalMessage"></p>
+        </div>
+    </div>
+
     <script>
         // Add active class to current menu item
         document.addEventListener('DOMContentLoaded', function() {
@@ -292,11 +330,63 @@ $conn->close();
                 // If on dog_edit.php, we want dog_list.php to be active in the sidebar
                 // This accounts for the common scenario where edit pages are linked from a list page.
                 if (currentPage === 'dog_edit.php' && item.getAttribute('href').includes('dog_list.php')) {
-                    item.classList.add('active');
+                    // Remove 'active' from other items, if any, before adding
+                    document.querySelector('.menu-item.active')?.classList.remove('active');
+                    item.parentElement.classList.add('active'); // Add active class to the parent li
                 } else if (item.getAttribute('href').includes(currentPage)) { // General case for other pages
-                    item.classList.add('active');
+                    // Remove 'active' from other items, if any, before adding
+                    document.querySelector('.menu-item.active')?.classList.remove('active');
+                    item.parentElement.classList.add('active');
                 }
             });
+
+            // Modal Logic (copied from dog_register.php for consistency)
+            const statusModal = document.getElementById('statusModal');
+            const closeButton = document.querySelector('.modal .close-button');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalMessage = document.getElementById('modalMessage');
+            const modalIcon = document.getElementById('modalIcon');
+            const modalContent = document.querySelector('.modal-content');
+
+            // PHP variables to JS
+            const successMessage = "<?php echo $success_message; ?>";
+            const errorMessage = "<?php echo $error_message; ?>";
+
+            let shouldRedirect = false; // Flag to control redirection
+
+            if (successMessage) {
+                modalTitle.textContent = "Success!";
+                modalMessage.textContent = successMessage;
+                modalIcon.innerHTML = "<i class='bx bx-check-circle'></i>"; // Boxicons checkmark
+                modalContent.classList.add('success');
+                statusModal.classList.add('show');
+                shouldRedirect = true; // Set flag to true on success
+            } else if (errorMessage) {
+                modalTitle.textContent = "Error!";
+                modalMessage.textContent = errorMessage;
+                modalIcon.innerHTML = "<i class='bx bx-x-circle'></i>"; // Boxicons X mark
+                modalContent.classList.add('error');
+                statusModal.classList.add('show');
+                // No redirect on error, allow user to stay on page and correct input
+            }
+
+            // Function to handle modal close and potential redirection
+            function handleModalClose() {
+                statusModal.classList.remove('show');
+                if (shouldRedirect) {
+                    window.location.href = 'dog_list.php'; // Redirect to dog_list.php
+                }
+            }
+
+            // Close modal when clicking on the close button
+            closeButton.onclick = handleModalClose;
+
+            // Close modal when clicking anywhere outside of the modal content
+            window.onclick = function(event) {
+                if (event.target == statusModal) {
+                    handleModalClose();
+                }
+            }
         });
     </script>
 </body>
